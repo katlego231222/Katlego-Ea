@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Katlego EA - Accurate V3</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{background:#070a12;color:white;font-family:Inter,system-ui}
+.signal-box{border:1px solid #1e293b; background: linear-gradient(180deg,#0f172a,#020617)}
+.wait{color:#facc15; border-color:#facc15; box-shadow:0 0 20px #facc1550}
+.buy{color:#22c55e; border-color:#22c55e; box-shadow:0 0 30px #22c55e80; animation:pulse 1s infinite}
+.sell{color:#ef4444; border-color:#ef4444; box-shadow:0 0 30px #ef444480; animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+</style>
+</head>
+<body class="p-3">
+<div class="max-w-md mx-auto">
+<h1 class="text-xl font-black text-center">KATLEGO EA <span class="text-cyan-400">ACCURATE V3</span></h1>
+<p class="text-center text-[10px] text-slate-400 mb-3">Market Structure + BOS + Order Block + EMA 20/50 + RSI Confluence</p>
+
+<div id="signalCard" class="signal-box wait rounded-[24px] p-6 text-center border-2">
+<div class="text-[11px] tracking-[0.3em] opacity-60">CURRENT SIGNAL</div>
+<div id="signalText" class="text-5xl font-black mt-2">WAIT</div>
+<div id="reason" class="text-xs mt-3 text-slate-300">Scanning for 3 confluences...</div>
+<div class="grid grid-cols-3 gap-2 mt-5 text-[10px]">
+<div class="bg-black/50 rounded-lg p-2"><div class="opacity-50">EMA</div><div id="emaStatus" class="font-bold">--</div></div>
+<div class="bg-black/50 rounded-lg p-2"><div class="opacity-50">STRUCTURE</div><div id="structStatus" class="font-bold">--</div></div>
+<div class="bg-black/50 rounded-lg p-2"><div class="opacity-50">RSI</div><div id="rsiStatus" class="font-bold">--</div></div>
+</div>
+</div>
+
+<div class="grid grid-cols-2 gap-2 mt-3">
+<div class="bg-slate-900 rounded-xl p-3 border border-slate-800">
+<div class="text-[10px] text-slate-400">Live Price (V75)</div>
+<div id="livePrice" class="text-xl font-mono font-bold">Loading...</div>
+<div id="priceChange" class="text-[11px]">--</div>
+</div>
+<div class="bg-slate-900 rounded-xl p-3 border border-slate-800">
+<div class="text-[10px] text-slate-400">Accuracy Filter</div>
+<div class="text-sm font-bold text-emerald-400">3/3 Confluence Required</div>
+<div class="text-[10px] text-slate-400">No random signals</div>
+</div>
+</div>
+
+<div class="bg-slate-900 rounded-xl p-3 mt-3 border border-slate-800">
+<div class="text-xs font-bold mb-2">Live Chart - M1 Structure</div>
+<div id="tradingview" style="height:300px" class="rounded-lg overflow-hidden bg-black"></div>
+</div>
+
+<div class="mt-3 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] text-slate-300">
+<b class="text-cyan-400">How Accurate Logic Works:</b><br>
+WAIT = Default. EA will NOT give BUY/SELL unless: 1) Price breaks structure (BOS), 2) EMA20 > EMA50 (for BUY) or < EMA50 (SELL), 3) RSI confirms + Order Block touch. This prevents fake signals.
+</div>
+
+<div class="mt-3 flex gap-2">
+<button onclick="location.reload()" class="flex-1 bg-slate-800 py-3 rounded-xl text-xs font-bold">Refresh Analysis</button>
+<button class="flex-1 bg-cyan-500 text-black py-3 rounded-xl text-xs font-black">ACCURATE MODE ON</button>
+</div>
+</div>
+
+<script>
+// --- DERIV LIVE PRICE FEED FOR V75 (Volatility 75 Index) ---
+let ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+let priceHistory = [];
+let lastPrice = 0;
+
+ws.onopen = () => { ws.send(JSON.stringify({ticks: "R_75"})); };
+
+ws.onmessage = (msg) => {
+  let data = JSON.parse(msg.data);
+  if(data.tick){
+    let price = data.tick.quote;
+    document.getElementById('livePrice').innerText = price.toFixed(2);
+    let diff = price - lastPrice;
+    document.getElementById('priceChange').innerText = (diff>=0? "▲ +" : "▼ ") + diff.toFixed(2);
+    document.getElementById('priceChange').className = diff>=0? "text-[11px] text-emerald-400" : "text-[11px] text-red-400";
+    lastPrice = price;
